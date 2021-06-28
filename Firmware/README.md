@@ -15,19 +15,19 @@ There are a few items that the ESP32 needs to access from your Google account:
 
 In order of the ESP32 to read this information, we'll need to add the script from the CalendarEvents.gs file. To add the script, head over to https://script.google.com and click on new project.
 
-[pic of screen]
+![New Project](https://github.com/awende/MicroMod_Calendar/blob/main/images/Script%20New%20Project.JPG)
 
 From there, add a name for the project. I just called mine "CalendarEvents". Now we can add the code from CalendarEvents.gs file by pasting it into the script editor. Find the variable `_calendarName`, and inside the quotes, add the name of your calendar to add, e.g. 'Work', or your email address. We can test to make sure everything is working by pressing save and then pressing the run button.
 
-[photo of save and run button highlight?]
+![Save and Run Icons](https://github.com/awende/MicroMod_Calendar/blob/main/images/Script%20save%20and%20run.JPG)
 
 The first time you do this, a window will pop up saying "Authorizaton required". After allowing the script to access your Gmail and Calendar apps, the script will run and an execution log will pop up from the bototm of the screen which should show all of the information outlined above.
 
-[photo of text output]
+![Script Test Run Text Output](https://github.com/awende/MicroMod_Calendar/blob/main/images/Script%20test%20run%20text%20output.JPG)
 
 By default, to get the number of unread emails, the script searches for `is:unread label:all AND NOT label:Spam`. If there are specific unread emails, you can modify the search operators as outlined [here](https://support.google.com/mail/answer/7190?hl=en). Once the scipt is working as expected, we need to let the ESP32 get access to the data. To do that the script needs to be deployed by clicking on "Deploy" -> New deployment. 
 
-[photo]
+![New Deployment](https://github.com/awende/MicroMod_Calendar/blob/main/images/Script%20New%20Deployment.JPG)
 
 Click on the gear icon and select Web app as your deployment type. You can provide a description if you want, but under web app, we want to make sure to have your email selected for "execute as", and for "Who has access", select anyone because the ESP32 won't be signing into Google. The last step is to click on deploy, which will generate the Deployment ID that the ESP32 uses.
 

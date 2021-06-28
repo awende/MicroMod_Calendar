@@ -2,7 +2,7 @@
 
 ========================================
 
-![SparkFun MicroMod Input and Display Carrier Board](https://cdn.sparkfun.com/assets/parts/1/5/9/2/2/16985-SparkFun_MicroMod_Input_and_Display_Carrier_Board-01a.jpg)
+![MicroMod Input and Display Calendar](https://github.com/awende/MicroMod_Calendar/blob/main/images/Input%20and%20Display%20Calendar.JPG)
 
 The MicroMod Calendar uses the SparkFun Input and Display MicroMod Carrier board, paired with the SparkFun ESP32 Processor board to display your Google calendar. To get this project working, the first thing to do is to add the Google Apps Script to your script library, which just needs the name of your calendar, i.e. "Work" or "Your Name". After the script is deployed, which you can read more here, head over to your Arduino IDE, install a couple of libraries, enter your unique information for your Wi-Fi network, script ID, and timezone information. Hit upload and that's it!
 
