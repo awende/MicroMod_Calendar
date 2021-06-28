@@ -24,6 +24,7 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <WiFiClientSecure.h>
+#include <EEPROM.h>
 #include <SPI.h>
 #include <Wire.h>
 
@@ -126,22 +127,36 @@ void Task1code( void * pvParameters )
       if(pressed & 0x04 || pressed & 0x08)
       {
         displayType = !displayType;
+        
+        EEPROM.write(1,displayType);
+        EEPROM.commit();
+        
         tft.fillScreen(ILI9341_BLACK);
         updateDisplay(displayType);
       }
       else if(pressed & 0x20) //Increase Backlight
       {
         byte pwmVal = 0;
+        
         backlight++;
         if(backlight > 9) backlight = 9;
+
+        EEPROM.write(0,backlight);
+        EEPROM.commit();
+        
         pwmVal = map(backlight,0,9,255,0);
         ledcWrite(1,pwmVal);
       }
       else if(pressed & 0x10) //Decrease Backlight
       {
         byte pwmVal = 0;
+        
         backlight--;
         if(backlight < 0) backlight = 0;
+
+        EEPROM.write(0,backlight);
+        EEPROM.commit();
+        
         pwmVal = map(backlight,0,9,255,0);
         ledcWrite(1,pwmVal);
       }
@@ -175,12 +190,23 @@ void Task1code( void * pvParameters )
 
 void setup()
 {
-  //Initialize Communication Buses
+  //Initialize Communication Buses and EEPROM
   Serial.begin(115200);
+  EEPROM.begin(2);
   Wire.begin();
 
   ledcAttachPin(BACKLIGHT_PIN,1);
   ledcSetup(1,10000,8);
+  
+  //Read backlight memory value
+  backlight = EEPROM.read(0);
+  if(backlight > 9) backlight = 9;
+
+  //Set backlight
+  ledcWrite(1,map(backlight,0,9,255,0));
+
+  //Read display view memory value
+  displayType = EEPROM.read(1);
   
   Serial.println("\nMICROMOD GOOGLE CALENDAR Display");
 
@@ -264,14 +290,16 @@ void updateDisplay(uint8_t display)
     //Print first event of tomorrow
     //(this will be overwritten if there's an event earier)
     tft.setCursor(0,60);
-    tft.print("Up next tomorrow:");
+    tft.print(totalEventsTomorrow);
+    tft.print(" meetings tomorrow.");
 
-    tft.setCursor(0,90);
-
-    if(calEntTomorrow[0].length() != 0)
+    if(totalEventsTomorrow != 0)
     {
+      tft.setCursor(0,100);
+      tft.print("Up next tomorrow:");
+      tft.setCursor(0,130);
       tft.print(calEntTomorrow[0].substring(0,27));
-      tft.setCursor(260,90);
+      tft.setCursor(260,130);
       int eventStart = calEntTomorrow[1].substring(0,2).toInt();
       if(eventStart > 12) eventStart -= 12; //Convert from 24hr to 12hr format
       tft.print(eventStart/10);
@@ -363,29 +391,26 @@ void updateDisplay(uint8_t display)
     tft.setFont(&FreeSans9pt7b);
     tft.setTextSize(1);
 
-    //Print first event of tomorrow
-    //(this will be overwritten if there's an event earier)
-    tft.setCursor(0,145);
-    tft.print("Up next tomorrow:");
+    //Print tomorrow's schedule
+    //(this will be overwritten if there's a meeting earier)
+    tft.setCursor(0,120);
+    tft.print(totalEventsTomorrow);
+    tft.print(" meetings tomorrow.");
 
-    tft.setCursor(0,170);
-
-    if(calEntTomorrow[0].length() != 0)
+    if(totalEventsTomorrow != 0)
     {
+      tft.setCursor(0,160);
+      tft.print("Up next tomorrow:");
+      tft.setCursor(0,185);
       tft.print(calEntTomorrow[0].substring(0,35));
-      tft.setCursor(270,170);
+      tft.setCursor(270,185);
       int eventStart = calEntTomorrow[1].substring(0,2).toInt();
       if(eventStart > 12) eventStart -= 12;
       tft.print(eventStart/10);
       tft.print(eventStart%10);
       tft.print(':');
       tft.print(calEntTomorrow[1].substring(3));
-    }
-    else
-    {
-      tft.print("None");
-    }
-    
+    }    
     
     for(byte i=0; i<totalEventsToday; i++)
     {
