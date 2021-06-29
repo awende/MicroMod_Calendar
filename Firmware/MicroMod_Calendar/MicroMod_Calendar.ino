@@ -20,7 +20,9 @@
  * following ways:
  * - Left/Right cycles between showing or hiding the current time
  * - Up/Down changes between 10 backlight brightness levels
+ * - Center rotates the display 180 degrees and swaps backlight controls
 */
+
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <WiFiClientSecure.h>
@@ -99,13 +101,14 @@ rgb_color colors[ledCount];
 MicroModButton button;
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS_PIN,TFT_DC_PIN);
 
-//Data to 
+//Data to get from Google
 int totalEventsToday = 0;
 String calEntToday[10][3];  //calEntToday[Event #][Name,Start Time, End Time]
 int totalEventsTomorrow = 0;
 String calEntTomorrow[3];   //calEntTomorrow[Name,Start Time, End Time]
 int unreadMail = 0;
 
+bool orientation = 0; //0-USB on left side, 1-USB on right side
 bool displayType = 1; //0-Don't show the time, 1-Do show the time
 int backlight = 9;  //Backlight brightness level (0-9)
 double prevTime = 0;
@@ -124,6 +127,7 @@ void Task1code( void * pvParameters )
     if(button.getPressed() != 0)
     {
       uint8_t pressed = button.getPressed(); //Read which button has been pressed
+      
       if(pressed & 0x04 || pressed & 0x08)
       {
         displayType = !displayType;
@@ -134,12 +138,20 @@ void Task1code( void * pvParameters )
         tft.fillScreen(ILI9341_BLACK);
         updateDisplay(displayType);
       }
-      else if(pressed & 0x20) //Increase Backlight
+      else if(pressed & 0x20) //Change Backlight
       {
         byte pwmVal = 0;
-        
-        backlight++;
-        if(backlight > 9) backlight = 9;
+
+        if(orientation) //orientation = 1
+        {
+          backlight++;
+          if(backlight > 9) backlight = 9;
+        }
+        else //orientation = 0
+        {
+          backlight--;
+          if(backlight < 0) backlight = 0;
+        }
 
         EEPROM.write(0,backlight);
         EEPROM.commit();
@@ -147,18 +159,35 @@ void Task1code( void * pvParameters )
         pwmVal = map(backlight,0,9,255,0);
         ledcWrite(1,pwmVal);
       }
-      else if(pressed & 0x10) //Decrease Backlight
+      else if(pressed & 0x10) //Change Backlight
       {
         byte pwmVal = 0;
         
-        backlight--;
-        if(backlight < 0) backlight = 0;
+        if(orientation) //orientation = 1
+        {
+          backlight--;
+          if(backlight < 0) backlight = 0;
+        }
+        else //orientation = 0
+        {
+          backlight++;
+          if(backlight > 9) backlight = 9;
+        }
 
         EEPROM.write(0,backlight);
         EEPROM.commit();
         
         pwmVal = map(backlight,0,9,255,0);
         ledcWrite(1,pwmVal);
+      }
+      else if(pressed & 0x40)
+      {
+        orientation = !orientation;
+        EEPROM.write(2,orientation);
+        EEPROM.commit();
+
+        tft.setRotation(orientation*2 + 1); //Sets the display in landscape (1 or 3)
+        updateDisplay(displayType);
       }
       
       while(button.getPressed() != 0) { vTaskDelay(10); }
@@ -192,8 +221,8 @@ void setup()
 {
   //Initialize Communication Buses and EEPROM
   Serial.begin(115200);
-  EEPROM.begin(2);
   Wire.begin();
+  EEPROM.begin(3);
 
   ledcAttachPin(BACKLIGHT_PIN,1);
   ledcSetup(1,10000,8);
@@ -207,6 +236,9 @@ void setup()
 
   //Read display view memory value
   displayType = EEPROM.read(1);
+
+  //Read orientation of display
+  orientation = EEPROM.read(2);
   
   Serial.println("\nMICROMOD GOOGLE CALENDAR Display");
 
@@ -216,14 +248,14 @@ void setup()
   //Initialize display
   tft.begin();
   tft.invertDisplay(true);
-  tft.setRotation(3);
+  tft.setRotation(orientation*2 + 1); //Sets the display in landscape (1 or 3)
   tft.setTextColor(ILI9341_WHITE);
   tft.fillScreen(ILI9341_BLACK);
 
   // Boot Screen
   tft.setFont(&FreeSans18pt7b);
-  tft.setCursor(40,60);
-  tft.print("ESP32 Calendar");
+  tft.setCursor(8,60);
+  tft.print("MicroMod Calendar");
 
   //Connect to WiFi
   tft.setFont(&FreeSans12pt7b);
@@ -283,12 +315,11 @@ void updateDisplay(uint8_t display)
   if(displayType == 0)
   {
     tft.fillScreen(ILI9341_BLACK);
-
     tft.setFont(&FreeSans12pt7b);
     tft.setTextSize(1);
-
+  
     //Print first event of tomorrow
-    //(this will be overwritten if there's an event earier)
+    //This will be over written if there is a meeting before tomorrow
     tft.setCursor(0,60);
     tft.print(totalEventsTomorrow);
     tft.print(" meetings tomorrow.");
@@ -307,11 +338,7 @@ void updateDisplay(uint8_t display)
       tft.print(':');
       tft.print(calEntTomorrow[1].substring(3));
     }
-    else
-    {
-      tft.print("None");
-    }
-    
+
     for(byte i=0; i<totalEventsToday; i++)
     {
       int eventStart = calEntToday[i][1].substring(0,2).toInt()*60 + calEntToday[i][1].substring(3).toInt();
@@ -366,7 +393,7 @@ void updateDisplay(uint8_t display)
         break;
       }
     }
-
+    
     //Print unread mail
     tft.setFont(&FreeSans12pt7b);
     tft.setTextSize(1);
@@ -392,7 +419,7 @@ void updateDisplay(uint8_t display)
     tft.setTextSize(1);
 
     //Print tomorrow's schedule
-    //(this will be overwritten if there's a meeting earier)
+    //This will be over written if there is a meeting before tomorrow
     tft.setCursor(0,120);
     tft.print(totalEventsTomorrow);
     tft.print(" meetings tomorrow.");
@@ -410,8 +437,8 @@ void updateDisplay(uint8_t display)
       tft.print(eventStart%10);
       tft.print(':');
       tft.print(calEntTomorrow[1].substring(3));
-    }    
-    
+    }
+
     for(byte i=0; i<totalEventsToday; i++)
     {
       int eventStart = calEntToday[i][1].substring(0,2).toInt()*60 + calEntToday[i][1].substring(3).toInt();
@@ -419,9 +446,7 @@ void updateDisplay(uint8_t display)
       
       if(currentTime < (eventEnd-5)) //Give 5min buffer for back to back meetings
       {
-        tft.fillRect(0,110,320,110,ILI9341_BLACK);
-        tft.setFont(&FreeSans9pt7b);
-        tft.setTextSize(1);
+        tft.fillRect(0,80,320,160,ILI9341_BLACK);
 
         //Print next event
         tft.setCursor(0,95);
@@ -443,9 +468,6 @@ void updateDisplay(uint8_t display)
         }
         else { tft.print("Now"); }
         
-        tft.setFont(&FreeSans9pt7b);
-        tft.setTextSize(1);
-        
         //Print up to 3 upcoming events after the next meeting
         for(byte j=0;j<3;j++)
         {
@@ -466,7 +488,7 @@ void updateDisplay(uint8_t display)
         break;
       }
     }
-
+    
     //Print unread mail
     tft.setFont(&FreeSans12pt7b);
     tft.setTextSize(1);
