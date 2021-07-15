@@ -322,7 +322,8 @@ void updateDisplay(uint8_t display)
     //This will be over written if there is a meeting before tomorrow
     tft.setCursor(0,60);
     tft.print(totalEventsTomorrow);
-    tft.print(" meetings tomorrow.");
+    if(totalEventsTomorrow == 1) { tft.print(" meeting tomorrow."); }
+    else { tft.print(" meetings tomorrow."); }
 
     if(totalEventsTomorrow != 0)
     {
@@ -422,7 +423,8 @@ void updateDisplay(uint8_t display)
     //This will be over written if there is a meeting before tomorrow
     tft.setCursor(0,120);
     tft.print(totalEventsTomorrow);
-    tft.print(" meetings tomorrow.");
+    if(totalEventsTomorrow == 1) { tft.print(" meeting tomorrow."); }
+    else { tft.print(" meetings tomorrow."); }
 
     if(totalEventsTomorrow != 0)
     {
